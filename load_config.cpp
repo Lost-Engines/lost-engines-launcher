@@ -37,7 +37,7 @@ void load_config(launcher_state &state) {
   if(state.config.count("network_threads") == 0) {
     unsigned int const max_hardware_threads{std::thread::hardware_concurrency()};
     unsigned int constexpr max_network_threads{4};
-    state.config.put("network_threads", std::clamp(max_hardware_threads, 1u, max_network_threads));
+    state.config.put("network_threads", std::clamp(max_hardware_threads / 2, 1u, max_network_threads)); // for low-thread count systems, aim for half of the available threads, at least 1, but not more than the maximum
   }
 
   state.game_list_file = state.config.get<std::filesystem::path>("cache_dir") / "game_list.json";
