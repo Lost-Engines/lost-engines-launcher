@@ -73,6 +73,8 @@ include_directories(BEFORE .)
 
 add_executable(lost-engines-launcher
   main.cpp
+  init_graphics.cpp
+  load_config.cpp
   platform_paths.cpp
   include/imgui/imgui.cpp
   #include/imgui/imgui_demo.cpp
