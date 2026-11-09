@@ -6,6 +6,7 @@ resource_loader::resource_loader(launcher_state &this_state)
   : state(this_state) {
   /// Default c'tor
   auto const network_thread_count{state.config.get<unsigned int>("network_threads")};
+  if(network_thread_count == 0) std::throw std::runtime_error("Network thread count cannot be 0, adjust your configuration");
   std::cout << "Starting " << network_thread_count << " network threads" << std::endl;
   for(unsigned int i{0}; i != network_thread_count; ++i) {
     network_threads.emplace_back([&]{
