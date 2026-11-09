@@ -56,6 +56,15 @@ else()
 endif()
 
 
+set(Boost_NO_WARN_NEW_VERSIONS 1)
+set(Boost_NO_BOOST_CMAKE TRUE)
+
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+
+find_package(Threads REQUIRED)
+find_package(Boost 1.90.0 COMPONENTS url REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 
@@ -77,6 +86,7 @@ add_executable(lost-engines-launcher
 target_link_libraries(lost-engines-launcher PRIVATE
   glfw
   OpenGL::GL
+  Boost::url
   ${CMAKE_DL_LIBS}
 )
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/url/urls.hpp>
 #include <GLFW/glfw3.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
@@ -25,6 +26,8 @@ struct launcher_state {
 
   std::filesystem::path config_dir{platform_paths::get_user_config_dir() / "lost-engines"};
   std::filesystem::path game_list_file;
+  boost::urls::url game_list_url;
+
   nlohmann::json game_list;
 
   boost::property_tree::ptree config;
@@ -120,18 +123,24 @@ auto main()->int {
   if(state.config.count("launcher_repo_url") == 0) {
     state.config.put("launcher_repo_url", "https://github.com/Lost-Engines/lost-engines-launcher");
   }
+  if(state.config.count("launcher_repo_raw_url") == 0) {
+    state.config.put("launcher_repo_raw_url", "https://raw.githubusercontent.com/Lost-Engines/lost-engines-launcher/refs/heads/master");
+  }
   state.game_list_file = state.config.get<std::filesystem::path>("cache_dir") / "game_list.json";
+  state.game_list_url = boost::urls::url{state.config.get<std::string>("launcher_repo_raw_url")};
+  state.game_list_url.segments().push_back("game_list.json");
   boost::property_tree::ini_parser::write_ini(config_path, state.config);
 
   std::cout << "Default data dir: " << state.config.get<std::filesystem::path>("default_data_dir") << std::endl;
-  std::cout << "Game list cache: " << state.game_list_file << std::endl;
   std::cout << "Launcher repository: " << state.config.get<std::string>("launcher_repo_url") << std::endl;
+  std::cout << "Game list download: " << state.game_list_url << std::endl;
+  std::cout << "Game list cache: " << state.game_list_file << std::endl;
 
   if(std::filesystem::exists(state.game_list_file)) {
     state.game_list = nlohmann::ordered_json::parse(std::ifstream{state.game_list_file});
   }
 
-  std::cout << state.game_list.dump(2) << std::endl;
+  std::cout << state.game_list["games"].size() << " games in current list at " << state.game_list_file << std::endl;
 
   std::cout << "Creating window..." << std::endl;
 
