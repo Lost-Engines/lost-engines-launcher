@@ -1,0 +1,49 @@
+{
+  "games": [
+    {
+      "name": "Darker",
+      "year": 1995,
+      "developers": [
+        "Jas.C.Brooke",
+        "Lyndon Brooke"
+      ],
+      "publishers": [
+        "Psygnosis"
+      ],
+      "versions": {
+        "darker-cpp": {
+          "description": "Faithful reconstruction of the original game",
+          "name": "Darker C++",
+          "repo_url": "https://github.com/Lost-Engines/darker-cpp"
+        },
+        "darker-redux": {
+          "description": "Reconstruction with graphical & gameplay improvements",
+          "name": "Darker Redux",
+          "repo_url": "https://github.com/Lost-Engines/darker-redux"
+        }
+      }
+    },
+    {
+      "name": "TFX",
+      "year": 1993,
+      "developers": [
+        "Digital Image Design"
+      ],
+      "publishers": [
+        "Ocean"
+      ],
+      "versions": {
+        "tfx-cpp": {
+          "description": "Faithful reconstruction of the original game",
+          "name": "TFX C++",
+          "repo_url": "https://github.com/Lost-Engines/tfx-cpp"
+        },
+        "tfx-redux": {
+          "description": "Reconstruction with graphical & interface improvements",
+          "name": "TFX Redux",
+          "repo_url": "https://github.com/Lost-Engines/tfx-redux"
+        }
+      }
+    }
+  ]
+}
