@@ -1,6 +1,53 @@
 {
   "games": [
     {
+      "name": "Apache Longbow",
+      "year": 1995,
+      "developers": [
+        "Digital Integration"
+      ],
+      "publishers": [
+        "Digital Integration",
+        "Interactive Magic"
+      ],
+      "versions": {
+        "apache-cpp": {
+          "description": "Faithful reconstruction of the original game",
+          "name": "Apache C++",
+          "repo_url": "https://github.com/Lost-Engines/apache-cpp"
+        },
+        "apache-redux": {
+          "description": "Reconstruction with graphical & gameplay improvements",
+          "name": "Apache Redux",
+          "repo_url": "https://github.com/Lost-Engines/apache-redux"
+        }
+      },
+      "preferred_version": "apache-redux"
+    },
+    {
+      "name": "Corncob 3D",
+      "year": 1991,
+      "developers": [
+        "Pie in the Sky Software"
+      ],
+      "publishers": [
+        "MVP Software"
+      ],
+      "versions": {
+        "corncob-cpp": {
+          "description": "Faithful reconstruction of the original game",
+          "name": "Corncob C++",
+          "repo_url": "https://github.com/Lost-Engines/corncob-cpp"
+        },
+        "corncob-redux": {
+          "description": "Reconstruction with graphical & gameplay improvements",
+          "name": "Corncob Redux",
+          "repo_url": "https://github.com/Lost-Engines/corncob-redux"
+        }
+      },
+      "preferred_version": "corncob-redux"
+    },
+    {
       "name": "Darker",
       "year": 1995,
       "developers": [
@@ -21,7 +68,26 @@
           "name": "Darker Redux",
           "repo_url": "https://github.com/Lost-Engines/darker-redux"
         }
-      }
+      },
+      "preferred_version": "darker-redux"
+    },
+    {
+      "name": "Metaltech: Earthsiege",
+      "year": 1994,
+      "developers": [
+        "Dynamix"
+      ],
+      "publishers": [
+        "Sierra On-Line"
+      ],
+      "versions": {
+        "earthsiege-cpp": {
+          "description": "Faithful reconstruction of the original game",
+          "name": "Earthsiege C++",
+          "repo_url": "https://github.com/Lost-Engines/earthsiege-cpp"
+        }
+      },
+      "preferred_version": "earthsiege-cpp"
     },
     {
       "name": "TFX",
@@ -43,7 +109,8 @@
           "name": "TFX Redux",
           "repo_url": "https://github.com/Lost-Engines/tfx-redux"
         }
-      }
+      },
+      "preferred_version": "tfx-redux"
     }
   ]
 }
