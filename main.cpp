@@ -1,11 +1,36 @@
+#include <filesystem>
 #include <iostream>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <GLFW/glfw3.h>
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
+#include <nlohmann/json.hpp>
 #include "vectorstorm/vector/vector2.h"
+#include "platform_paths.h"
 
-void draw_window() {
+struct launcher_state {
+  enum class update_state {
+    not_tried,
+    loading,
+    failed_to_connect,
+    outdated,
+    downloading,
+    updating,
+    up_to_date,
+  };
+  update_state launcher_update_state{update_state::not_tried};
+  update_state game_list_update_state{update_state::not_tried};
+
+  std::filesystem::path config_dir{platform_paths::get_user_config_dir() / "lost-engines"};
+  std::filesystem::path game_list_file;
+  nlohmann::json game_list;
+
+  boost::property_tree::ptree config;
+};
+
+void draw_window(launcher_state &state) {
   ImGuiViewport const &viewport{*ImGui::GetMainViewport()};
   ImGui::SetNextWindowPos(viewport.Pos);
   ImGui::SetNextWindowSize(viewport.Size);
@@ -16,10 +41,100 @@ void draw_window() {
     return;
   }
 
+  switch(state.launcher_update_state) {
+  case launcher_state::update_state::not_tried:
+    // TODO: launch update check
+    break;
+  case launcher_state::update_state::loading:
+    ImGui::TextUnformatted("Checking for launcher updates...");
+    break;
+  case launcher_state::update_state::failed_to_connect:
+    ImGui::TextUnformatted("Failed to connect to Github, updates and downloads unavailable");
+    break;
+  case launcher_state::update_state::outdated:
+    ImGui::TextUnformatted("Launcher update available");
+    // TODO: pop up a window saying there's an update available, update now?  Always update?
+    break;
+  case launcher_state::update_state::downloading:
+    ImGui::TextUnformatted("Downloading launcher update...");
+    break;
+  case launcher_state::update_state::updating:
+    ImGui::TextUnformatted("Updating launcher...");
+    break;
+  case launcher_state::update_state::up_to_date:
+    ImGui::TextUnformatted("Launcher up to date");
+    // TODO: we don't need to show anything for this state really, this is just for the WIP
+    break;
+  }
+
+  switch(state.game_list_update_state) {
+  case launcher_state::update_state::not_tried:
+    // TODO: initialise fetch for latest game list
+    break;
+  case launcher_state::update_state::failed_to_connect:
+    if(state.game_list.empty()) {
+      ImGui::TextUnformatted("Failed to connect to loader repository, no game list available!");
+    } else {
+      ImGui::TextUnformatted("Failed to connect to loader repository, game list updates unavailable");
+    }
+    break;
+  case launcher_state::update_state::downloading:
+    ImGui::TextUnformatted("Downloading game list...");
+    break;
+  case launcher_state::update_state::up_to_date:
+    ImGui::TextUnformatted("Game list loaded");
+    break;
+  }
+
   ImGui::End();
 }
 
 auto main()->int {
+  std::cout << "Lost Engines Launcher" << std::endl;
+
+  launcher_state state{};
+
+  std::cout << "Configuration directory: " << state.config_dir << std::endl;
+
+  auto config_path{state.config_dir / "config.ini"};
+
+  if(std::filesystem::exists(config_path)) {
+    std::cout << "Loading configuration from " << config_path << std::endl;
+    boost::property_tree::ini_parser::read_ini(config_path, state.config);
+  } else {
+    if(!std::filesystem::exists(state.config_dir)) {
+      std::cout << "Creating configuration directory " << state.config_dir << std::endl;
+      std::filesystem::create_directories(state.config_dir);
+    }
+    std::cout << "Creating default configuration in " << config_path << std::endl;
+  }
+
+  if(state.config.count("default_data_dir") == 0) {
+    std::filesystem::path default_data_dir{platform_paths::get_user_data_dir() / "lost-engines"};
+    state.config.put("default_data_dir", default_data_dir.string());
+  }
+  if(state.config.count("cache_dir") == 0) {
+    std::filesystem::path cache_dir{platform_paths::get_user_cache_dir() / "lost-engines"};
+    state.config.put("cache_dir", cache_dir.string());
+  }
+  if(state.config.count("launcher_repo_url") == 0) {
+    state.config.put("launcher_repo_url", "https://github.com/Lost-Engines/lost-engines-launcher");
+  }
+  state.game_list_file = state.config.get<std::filesystem::path>("cache_dir") / "game_list.json";
+  boost::property_tree::ini_parser::write_ini(config_path, state.config);
+
+  std::cout << "Default data dir: " << state.config.get<std::filesystem::path>("default_data_dir") << std::endl;
+  std::cout << "Game list cache: " << state.game_list_file << std::endl;
+  std::cout << "Launcher repository: " << state.config.get<std::string>("launcher_repo_url") << std::endl;
+
+  if(std::filesystem::exists(state.game_list_file)) {
+    state.game_list = nlohmann::ordered_json::parse(std::ifstream{state.game_list_file});
+  }
+
+  std::cout << state.game_list.dump(2) << std::endl;
+
+  std::cout << "Creating window..." << std::endl;
+
   glfwSetErrorCallback([](int error, const char* description){
     std::cerr << "GLFW Error " << error << ": " << description << std::endl;
   });
@@ -50,8 +165,9 @@ auto main()->int {
   imgui_style.FontScaleDpi = main_scale;                                        // set initial font scale. (in docking branch: using imgui_io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
 
   ImGui_ImplGlfw_InitForOpenGL(window, true);
-  const char *glsl_version{nullptr};
-  ImGui_ImplOpenGL3_Init(glsl_version);
+  ImGui_ImplOpenGL3_Init();
+
+  std::cout << "Ready" << std::endl;
 
   while(!glfwWindowShouldClose(window)) {
     glfwPollEvents();
@@ -65,7 +181,7 @@ auto main()->int {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    draw_window();
+    draw_window(state);
 
     ImGui::Render();
     vec2i display_size;
