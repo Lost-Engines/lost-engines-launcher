@@ -1,6 +1,7 @@
 #include "load_config.h"
 #include <iostream>
 #include <filesystem>
+#include <thread>
 #include <nlohmann/json.hpp>
 
 void load_config(launcher_state &state) {
@@ -35,7 +36,8 @@ void load_config(launcher_state &state) {
   }
   if(state.config.count("network_threads") == 0) {
     unsigned int const max_hardware_threads{std::thread::hardware_concurrency()};
-    state.config.put("network_threads", std::clamp(max_hardware_threads, 1u, 4u));
+    unsigned int constexpr max_network_threads{4};
+    state.config.put("network_threads", std::clamp(max_hardware_threads, 1u, max_network_threads));
   }
 
   state.game_list_file = state.config.get<std::filesystem::path>("cache_dir") / "game_list.json";

@@ -1,5 +1,4 @@
 #include <iostream>
-#include <thread>
 #include <boost/property_tree/ini_parser.hpp>
 #include <GLFW/glfw3.h>
 #include <imgui/imgui.h>
@@ -9,8 +8,10 @@
 #include "init_graphics.h"
 #include "launcher_state.h"
 #include "load_config.h"
+#include "resource_loader.h"
 
-void draw_window(launcher_state &state) {
+
+void draw_window(launcher_state &state, resource_loader &loader) {
   ImGuiViewport const &viewport{*ImGui::GetMainViewport()};
   ImGui::SetNextWindowPos(viewport.Pos);
   ImGui::SetNextWindowSize(viewport.Size);
@@ -21,7 +22,7 @@ void draw_window(launcher_state &state) {
     return;
   }
 
-  switch(state.launcher_update_state) {
+  switch(state.launcher_update_state.load(std::memory_order_relaxed)) {
   case launcher_state::update_state::not_tried:
     // TODO: launch update check
     break;
@@ -41,15 +42,18 @@ void draw_window(launcher_state &state) {
   case launcher_state::update_state::updating:
     ImGui::TextUnformatted("Updating launcher...");
     break;
+  case launcher_state::update_state::pending_processing:
+    // TODO: any action this thread needs to take
+    break;
   case launcher_state::update_state::up_to_date:
     ImGui::TextUnformatted("Launcher up to date");
     // TODO: we don't need to show anything for this state really, this is just for the WIP
     break;
   }
 
-  switch(state.game_list_update_state) {
+  switch(state.game_list_update_state.load(std::memory_order_relaxed)) {
   case launcher_state::update_state::not_tried:
-    // TODO: initialise fetch for latest game list
+    loader.fetch_game_list();
     break;
   case launcher_state::update_state::failed_to_connect:
     if(state.game_list.empty()) {
@@ -60,6 +64,12 @@ void draw_window(launcher_state &state) {
     break;
   case launcher_state::update_state::downloading:
     ImGui::TextUnformatted("Downloading game list...");
+    break;
+  case launcher_state::update_state::updating:
+    // TODO: any action here?  Is this a possible value for this enum?
+    break;
+  case launcher_state::update_state::pending_processing:
+    // TODO: any action this thread needs to take
     break;
   case launcher_state::update_state::up_to_date:
     ImGui::TextUnformatted("Game list loaded");
@@ -81,13 +91,7 @@ auto main()->int {
   }
   std::cout << state.game_list["games"].size() << " games in current list at " << state.game_list_file << std::endl;
 
-  std::cout << "Starting " << state.config.get<unsigned int>("network_threads") << " network threads" << std::endl;
-  std::vector<std::jthread> network_threads;
-  for(unsigned int i{0}; i != state.config.get<unsigned int>("network_threads"); ++i) {
-    network_threads.emplace_back([&]{
-      state.io_context.run();
-    });
-  }
+  resource_loader loader{state};
 
   init_graphics("Lost Engines");
 
@@ -104,7 +108,7 @@ auto main()->int {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    draw_window(state);
+    draw_window(state, loader);
 
     ImGui::Render();
     vec2i display_size;

@@ -76,6 +76,7 @@ add_executable(lost-engines-launcher
   init_graphics.cpp
   load_config.cpp
   platform_paths.cpp
+  resource_loader.cpp
   include/imgui/imgui.cpp
   #include/imgui/imgui_demo.cpp
   include/imgui/imgui_draw.cpp
