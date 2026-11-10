@@ -90,6 +90,8 @@ void draw_window(launcher_state &state, resource_loader &loader) {
 
     for(auto const &game : state.game_list->operator[]("games")) {
       auto const &name{game["name"].get<std::string>()};
+      auto &selected_game_version{state.selected_game_versions[name]};
+
       ImGui::PushID(name.c_str());
       ImGui::TableNextRow();
       ImGui::TableSetColumnIndex(0);
@@ -97,10 +99,10 @@ void draw_window(launcher_state &state, resource_loader &loader) {
 
       ImGui::TableNextColumn();
       ImGui::SetNextItemWidth(-FLT_MIN);                                        // stretch combo to column width
-      if(ImGui::BeginCombo("##version_select", state.selected_game_versions[name].c_str())) {
+      if(ImGui::BeginCombo("##version_select", selected_game_version.c_str())) {
         for(auto const &[version_name, this_version] : game["versions"].items()) {
-          bool const is_selected{version_name == state.selected_game_versions[name]};
-          if(ImGui::Selectable(version_name.c_str(), is_selected)) state.selected_game_versions[name] = version_name;
+          bool const is_selected{version_name == selected_game_version};
+          if(ImGui::Selectable(version_name.c_str(), is_selected)) selected_game_version = version_name;
           {
             std::ostringstream tooltip_ss;
             tooltip_ss << "Build variant: " << version_name << "\n";
@@ -121,10 +123,10 @@ void draw_window(launcher_state &state, resource_loader &loader) {
       switch(game_files_state.game_download_state) {
       case launcher_state::game_files_state::download_states::not_started:
         if(ImGui::Button("Download")) {
-          auto const &game_download_url{get_game_download_url(game["versions"][state.selected_game_versions[name]])};
-          std::filesystem::path install_destination{state.config.get<std::filesystem::path>("default_data_dir") / state.selected_game_versions[name]};
+          auto const &game_download_url{get_game_download_url(game["versions"][selected_game_version])};
+          std::filesystem::path install_destination{state.config.get<std::filesystem::path>("default_data_dir") / selected_game_version};
           // TODO: read game destinations specified manually in the config and override the default here
-          loader.install_game(game_download_url, install_destination);
+          loader.install_game(game_download_url, install_destination, state.game_files_states[name + selected_game_version]);
         }
         ImGui::SetItemTooltip("Download game and data to default directories");
 
@@ -152,7 +154,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
           */
 
           if(ImGui::Button("Fetch game package manually")) {
-            open_url(get_game_download_url(game["versions"][state.selected_game_versions[name]]));
+            open_url(get_game_download_url(game["versions"][selected_game_version]));
             ImGui::CloseCurrentPopup();
           }
           ImGui::SetItemTooltip("Manually open the game package download URL in your browser");
@@ -211,7 +213,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
       // TODO: dropdown with docs links
 
       ImGui::TableNextColumn();
-      if(ImGui::Button("Source code")) open_url(game["versions"][state.selected_game_versions[name]]["repo_url"].get<std::string>());
+      if(ImGui::Button("Source code")) open_url(game["versions"][selected_game_version]["repo_url"].get<std::string>());
       // TODO, link emoji
       ImGui::SetItemTooltip("Explore the open source code of this build on Github");
 

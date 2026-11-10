@@ -81,6 +81,7 @@ add_executable(lost-engines-launcher
   # shared components
   open_url.cpp
   platform_paths.cpp
+  memorystorm/memorystorm.cpp
   # libraries
   include/imgui/imgui.cpp
   #include/imgui/imgui_demo.cpp
