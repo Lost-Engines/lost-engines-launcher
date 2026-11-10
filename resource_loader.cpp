@@ -5,11 +5,12 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include "platform_defines.h"
 
 resource_loader::resource_loader(launcher_state &this_state)
   : state(this_state) {
@@ -125,6 +126,16 @@ void resource_loader::fetch_game_list() {
       state.game_list_update_state.store(launcher_state::update_state::up_to_date, std::memory_order_release);
     }
   );
+}
+
+void resource_loader::install_game(boost::urls::url const &game_download_url, std::filesystem::path const &destination) {
+  /// Fetch the game package from the given URL and extract it at the destination
+  std::cout << "Downloading from " << game_download_url << std::endl;
+
+
+
+  std::cout << "Installing in " << destination << std::endl;
+  // TODO: use platform defines to determine how to handle the extraction
 }
 
 void resource_loader::run() {

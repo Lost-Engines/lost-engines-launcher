@@ -20,6 +20,8 @@ public:
 
   void fetch_game_list();
 
+  void install_game(boost::urls::url const &game_download_url, std::filesystem::path const &destination);
+
 private:
   void run();
 };

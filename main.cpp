@@ -122,8 +122,9 @@ void draw_window(launcher_state &state, resource_loader &loader) {
       case launcher_state::game_files_state::download_states::not_started:
         if(ImGui::Button("Download")) {
           auto const &game_download_url{get_game_download_url(game["versions"][state.selected_game_versions[name]])};
-          std::cout << "DEBUG: would download from " << game_download_url << std::endl;
-          // TODO
+          std::filesystem::path install_destination{state.config.get<std::filesystem::path>("default_data_dir") / state.selected_game_versions[name]};
+          // TODO: read game destinations specified manually in the config and override the default here
+          loader.install_game(game_download_url, install_destination);
         }
         ImGui::SetItemTooltip("Download game and data to default directories");
 
