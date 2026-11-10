@@ -110,6 +110,7 @@ void resource_loader::fetch_game_list() {
 
       std::ofstream{state.game_list_file} << new_list.dump(2);
       std::cout << "Game list updated with " << new_list["games"].size() << " games and saved in " << state.game_list_file << std::endl;
+      state.game_list_update_state.store(launcher_state::update_state::up_to_date, std::memory_order_release);
     },
     [this](std::exception_ptr const error) {
       if(error) {
@@ -118,7 +119,7 @@ void resource_loader::fetch_game_list() {
         } catch(std::exception const &exception) {
           std::cerr << "Failed to fetch game list from " << state.game_list_url << ": " << exception.what() << std::endl;
         }
-        state.game_list_update_state.store(launcher_state::update_state::failed_to_connect, std::memory_order_release);
+        state.game_list_update_state.store(launcher_state::update_state::failed, std::memory_order_release);
         return;
       }
       state.game_list_update_state.store(launcher_state::update_state::up_to_date, std::memory_order_release);

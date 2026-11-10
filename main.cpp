@@ -9,7 +9,8 @@
 #include "launcher_state.h"
 #include "load_config.h"
 #include "resource_loader.h"
-
+#include "open_url.h"
+#include "stream_string.h"
 
 void draw_window(launcher_state &state, resource_loader &loader) {
   ImGuiViewport const &viewport{*ImGui::GetMainViewport()};
@@ -22,14 +23,17 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     return;
   }
 
-  switch(state.launcher_update_state.load(std::memory_order_relaxed)) {
+  // TODO: draw a nice logo banner
+  // TODO: menu popout button in top right corner
+
+  switch(state.launcher_update_state.load(std::memory_order_acquire)) {
   case launcher_state::update_state::not_tried:
     // TODO: launch update check
     break;
   case launcher_state::update_state::loading:
     ImGui::TextUnformatted("Checking for launcher updates...");
     break;
-  case launcher_state::update_state::failed_to_connect:
+  case launcher_state::update_state::failed:
     ImGui::TextUnformatted("Failed to connect to Github, updates and downloads unavailable");
     break;
   case launcher_state::update_state::outdated:
@@ -48,15 +52,17 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     break;
   }
 
-  switch(state.game_list_update_state.load(std::memory_order_relaxed)) {
+  switch(state.game_list_update_state.load(std::memory_order_acquire)) {
   case launcher_state::update_state::not_tried:
     loader.fetch_game_list();
     break;
-  case launcher_state::update_state::failed_to_connect:
+  case launcher_state::update_state::failed:
     if(state.game_list.get().empty()) {
       ImGui::TextUnformatted("Failed to connect to loader repository, no game list available!");
+      // TODO: more helpful diagnostics notes, a link to check access, a link to report a bug
     } else {
       ImGui::TextUnformatted("Failed to connect to loader repository, game list updates unavailable");
+      // TODO: more helpful diagnostics notes
     }
     break;
   case launcher_state::update_state::downloading:
@@ -66,7 +72,8 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     ImGui::TextUnformatted("Updating game list...");
     break;
   case launcher_state::update_state::up_to_date:
-    ImGui::TextUnformatted("Game list loaded");
+    //ImGui::TextUnformatted("Game list loaded");
+    // nothing to draw, game list shown below
     break;
   }
 
@@ -77,7 +84,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     ImGui::TableSetupColumn("Docs",    ImGuiTableColumnFlags_WidthFixed, 80.0f);
     ImGui::TableSetupColumn("Source",  ImGuiTableColumnFlags_WidthFixed);
     ImGui::TableSetupColumn("Explore", ImGuiTableColumnFlags_WidthFixed);
-    ImGui::TableSetupColumn("Config",  ImGuiTableColumnFlags_WidthFixed, 30.0f);
+    ImGui::TableSetupColumn("Config",  ImGuiTableColumnFlags_WidthFixed, 40.0f);
     ImGui::TableHeadersRow();
 
     for(auto const &game : state.game_list->operator[]("games")) {
@@ -93,31 +100,120 @@ void draw_window(launcher_state &state, resource_loader &loader) {
         for(auto const &[version_name, this_version] : game["versions"].items()) {
           bool const is_selected{version_name == state.selected_game_versions[name]};
           if(ImGui::Selectable(version_name.c_str(), is_selected)) state.selected_game_versions[name] = version_name;
+          {
+            std::ostringstream tooltip_ss;
+            tooltip_ss << "Build variant: " << version_name << "\n";
+            for(auto const &[key, value] : this_version.items()) {              // list all of this version's properties in the tooltip
+              tooltip_ss << key << ": " << value.get<std::string>() << "\n";
+            }
+            tooltip_ss << "Recommended variant for this game: " << game["preferred_version"].get<std::string>();
+            ImGui::SetItemTooltip(tooltip_ss.str().c_str());
+          }
           if(is_selected) ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
       }
-      //ImGui::Button(game["preferred_version"].get<std::string>().c_str());
-      // TODO: variant dropdown
+      ImGui::SetItemTooltip("Select a build variant to download and run");
 
       ImGui::TableNextColumn();
-      ImGui::Button("Download");
-      // TODO: proper buttons
+      auto &game_files_state{state.game_files_states[name]};
+      switch(game_files_state.game_download_state) {
+      case launcher_state::game_files_state::download_states::not_started:
+        if(ImGui::Button("Download")) {
+          // TODO
+        }
+        ImGui::SetItemTooltip("Download game and data to default directories");
+
+        ImGui::SameLine(0.0f, 0.0f);
+        if(ImGui::BeginCombo("##download_options", nullptr, ImGuiComboFlags_NoPreview | ImGuiComboFlags_PopupAlignLeft)) {
+          if(ImGui::Button("Download game and data to default directories")) {
+            // TODO
+            ImGui::CloseCurrentPopup();
+          }
+          ImGui::SetItemTooltip("Use the default download location for game files and data");
+
+          if(ImGui::Button("Choose download destination")) {
+            // TODO
+            ImGui::CloseCurrentPopup();
+          }
+          ImGui::SetItemTooltip("Choose this if you want the game files to be downloaded to a specific directory other than the default");
+
+          // TODO: hide the below if the game doesn't have data files to download
+          /*
+          if(ImGui::Button("Use existing game install")) {
+            // TODO
+            ImGui::CloseCurrentPopup();
+          }
+          ImGui::SetItemTooltip("Choose this if you already have a copy of the original game installed, and want to use its data files");
+          */
+          ImGui::EndCombo();
+        }
+        ImGui::SetItemTooltip("Download options");
+        break;
+      case launcher_state::game_files_state::download_states::in_progress:
+        ImGui::BeginDisabled();
+        ImGui::Button("Downloading");
+        ImGui::EndDisabled();
+        // TODO: show a progress bar instead of a disabled button
+        ImGui::SetItemTooltip(stream_string{} << "Game files are downloading, progress " << game_files_state.download_progress << "%");
+        // TODO: small cancel button
+        break;
+      case launcher_state::game_files_state::download_states::done:
+        switch(game_files_state.data_download_state) {
+        case launcher_state::game_files_state::download_states::not_started:
+          // TODO: we shouldn't reach this, data download should be queued after game download automatically
+          break;
+        case launcher_state::game_files_state::download_states::in_progress:
+          ImGui::BeginDisabled();
+          ImGui::Button("Downloading");
+          ImGui::EndDisabled();
+          // TODO: show a progress bar instead of a disabled button
+          ImGui::SetItemTooltip(stream_string{} << "Game data is downloading, progress " << game_files_state.download_progress << "%");
+          // TODO: small cancel button
+          break;
+        case launcher_state::game_files_state::download_states::done:
+        case launcher_state::game_files_state::download_states::not_needed:
+          break;
+        case launcher_state::game_files_state::download_states::failed:
+          if(ImGui::Button("Download failed")) {
+            // TODO
+          }
+          ImGui::SetItemTooltip("Failed to download game data - press to try again, check logs for details");
+          // TODO
+          break;
+        }
+
+        break;
+      case launcher_state::game_files_state::download_states::not_needed:
+        assert(false || "this branch should never be reached for game files");
+        // TODO: later we might want to add links to play in browser in this branch for games that need no download
+        break;
+      case launcher_state::game_files_state::download_states::failed:
+        if(ImGui::Button("Download failed")) {
+          // TODO
+        }
+        ImGui::SetItemTooltip("Failed to download game files - press to try again, check logs for details");
+        // TODO
+        break;
+      }
 
       ImGui::TableNextColumn();
       // TODO: dropdown with docs links
 
       ImGui::TableNextColumn();
-      ImGui::Button("Source code");
+      if(ImGui::Button("Source code")) open_url(game["versions"][state.selected_game_versions[name]]["repo_url"].get<std::string>());
       // TODO, link emoji
+      ImGui::SetItemTooltip("Explore the open source code of this build on Github");
 
       ImGui::TableNextColumn();
-      ImGui::Button("Analysis");
+      if(ImGui::Button("Analysis")) open_url(game["analysis_url"].get<std::string>());
       // TODO, link emoji
+      ImGui::SetItemTooltip("Explore game resource browsers and read the in-depth reverse engineering analysis for this game");
 
       ImGui::TableNextColumn();
       ImGui::Button("...");
-      // TODO: dropdown
+      // TODO: popup menu
+      ImGui::SetItemTooltip("More options");
       ImGui::PopID();
     }
 
