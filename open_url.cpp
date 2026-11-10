@@ -11,7 +11,7 @@
   #error "Compilation platform could not be determined.  Make sure platform_defines.h is included and up to date."
 #endif // defined
 
-void open_url(std::string const &url) {
+void open_url(boost::urls::url const &url) {
   /// Open the specified URL in the system default browser, regardless of platform
   std::cout << "Opening URL " << url << std::endl;
   #if defined(PLATFORM_WINDOWS)
@@ -30,4 +30,8 @@ void open_url(std::string const &url) {
     std::string command = "open " + url;
     system(command.c_str());
   #endif // defined
+}
+
+void open_url(std::string const &url) {
+  open_url(boost::urls::url{url});
 }
