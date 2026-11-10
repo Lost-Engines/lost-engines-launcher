@@ -78,6 +78,7 @@ add_executable(lost-engines-launcher
   init_graphics.cpp
   load_config.cpp
   resource_loader.cpp
+  archive_extraction.cpp
   get_game_download_url.cpp
   # shared components
   open_url.cpp

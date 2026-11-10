@@ -1,10 +1,13 @@
 #include "resource_loader.h"
+#include "platform_defines.h"
 #include <chrono>
+#include <ctime>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -21,9 +24,8 @@
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include <miniz-cpp/zip_file.hpp>
 #undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "platform_defines.h"
 #include "memorystorm/memorystorm.h"
-#include "stream_to_tar.h"
+#include "archive_extraction.h"
 
 namespace {
 
@@ -190,20 +192,25 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
       std::cout << "Downloaded " << memorystorm::human_readable(archive.size()) << ", installing in " << destination << std::endl;
       std::filesystem::create_directories(destination);
       auto const root{std::filesystem::canonical(destination)};
-      auto resolve_path{[&root](std::string const &name)->std::filesystem::path {
-        std::filesystem::path const path{name};
-        if(path.empty() || path.has_root_path()) throw std::runtime_error{"Archive entry must have a relative path"};
-        for(auto const &component : path) {
-          if(component == "..") throw std::runtime_error{"Archive entry must stay within the installation directory"};
-        }
-        return root / path;
-      }};
 
       #if defined(PLATFORM_WINDOWS)
         miniz_cpp::zip_file package{archive};
+        std::vector<archive_metadata> metadata;
         for(auto const &entry : package.infolist()) {
-          auto const path{resolve_path(entry.filename)};
-          if(entry.filename.back() == '/') {
+          auto const path{resolve_archive_path(root, entry.filename)};
+          std::tm time{};
+          time.tm_sec = entry.date_time.seconds;
+          time.tm_min = entry.date_time.minutes;
+          time.tm_hour = entry.date_time.hours;
+          time.tm_mday = entry.date_time.day;
+          time.tm_mon = entry.date_time.month - 1;
+          time.tm_year = entry.date_time.year - 1900;
+          time.tm_isdst = -1;
+          auto const modified{std::mktime(&time)};
+          if(modified == std::time_t{-1}) throw std::runtime_error{"Invalid ZIP modification time"};
+          bool const directory{entry.filename.back() == '/'};
+          metadata.push_back({.path{path}, .mtime{std::chrono::system_clock::from_time_t(modified)}, .permissions{std::nullopt}, .directory{directory}});
+          if(directory) {
             std::filesystem::create_directories(path);
             continue;
           }
@@ -213,24 +220,13 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
           output << package.read(entry);
           output.close();
         }
+        restore_archive_metadata(root, metadata);
       #elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
         boost::iostreams::filtering_istream input;
         input.push(boost::iostreams::gzip_decompressor{});
         input.push(boost::iostreams::array_source{reinterpret_cast<char const*>(archive.data()), archive.size()});
         input.exceptions(std::ios::badbit);
-        stream_to_tar(input, [&](stream_to_tar_entry const &entry, std::istream &contents) {
-          auto const path{resolve_path(entry.filename)};
-          if(entry.is_directory) {
-            std::filesystem::create_directories(path);
-            return;
-          }
-          std::filesystem::create_directories(path.parent_path());
-          std::ofstream output{path, std::ios::binary | std::ios::trunc};
-          output.exceptions(std::ios::badbit | std::ios::failbit);
-          if(entry.size != 0) output << contents.rdbuf();
-          output.close();
-          std::filesystem::permissions(path, static_cast<std::filesystem::perms>(entry.mode & 0777u));
-        });
+        extract_tar(input, root);
       #else
         #error "Platform must be defined for installation"
       #endif
