@@ -15,6 +15,7 @@ struct stream_to_tar_entry {
   /// Properties of a file read from the TAR stream
   std::string filename;                                                       /// name of the file, including its directory
   uint64_t size{0u};                                                          /// size of the file's contents in bytes
+  uint32_t mode{0u};                                                          /// file permission bits from the TAR header
   bool is_directory{false};                                                   /// whether the entry represents a directory
 };
 
@@ -101,6 +102,7 @@ void stream_to_tar(std::istream &stream,                                      //
     stream_to_tar_entry entry{
       .filename{field_text({header.name, sizeof(header.name)})},
       .size{parse_octal({header.size, sizeof(header.size)})},
+      .mode{static_cast<uint32_t>(parse_octal({header.mode, sizeof(header.mode)}))},
       .is_directory{header.typeflag == '5'},
     };
     if(header.magic[5] == '\0' && header.prefix[0] != '\0') {

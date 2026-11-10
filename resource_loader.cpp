@@ -229,6 +229,7 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
           output.exceptions(std::ios::badbit | std::ios::failbit);
           if(entry.size != 0) output << contents.rdbuf();
           output.close();
+          std::filesystem::permissions(path, static_cast<std::filesystem::perms>(entry.mode & 0777u));
         });
       #else
         #error "Platform must be defined for installation"
