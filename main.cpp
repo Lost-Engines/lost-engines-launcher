@@ -12,6 +12,7 @@
 #include "open_url.h"
 #include "stream_string.h"
 #include "get_game_download_url.h"
+#include "get_game_executable_path.h"
 
 void draw_window(launcher_state &state, resource_loader &loader) {
   ImGuiViewport const &viewport{*ImGui::GetMainViewport()};
@@ -188,6 +189,9 @@ void draw_window(launcher_state &state, resource_loader &loader) {
         case launcher_state::game_files_state::download_states::done:
         case launcher_state::game_files_state::download_states::not_needed:
           if(ImGui::Button("Run", {-FLT_MIN, 0.0f})) {
+            auto executable_path{state.config.get<std::filesystem::path>("default_data_dir") / selected_game_version / get_game_executable_path(game["versions"][selected_game_version])};
+            // TODO: read game destinations specified manually in the config and override the default here
+            std::cout << "Running " << executable_path << std::endl;
             // TODO
           }
           ImGui::SetItemTooltip("Run the game at ");

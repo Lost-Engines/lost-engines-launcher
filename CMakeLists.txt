@@ -80,6 +80,7 @@ add_executable(lost-engines-launcher
   resource_loader.cpp
   archive_extraction.cpp
   get_game_download_url.cpp
+  get_game_executable_path.cpp
   # shared components
   open_url.cpp
   platform_paths.cpp
