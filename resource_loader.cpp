@@ -54,7 +54,7 @@ auto download(boost::urls::url url, std::string const accept, std::function<void
     auto const endpoints{co_await resolver.async_resolve(host, port, boost::asio::use_awaitable)};
     boost::beast::flat_buffer buffer;
     boost::beast::http::response_parser<boost::beast::http::vector_body<unsigned char>> response;
-    response.body_limit(boost::none);                                         // archives can exceed Beast's default 8 MiB limit
+    response.body_limit(boost::none);                                           // archives can exceed Beast's default 8 MiB limit
 
     auto receive_response{[&](auto &stream)->boost::asio::awaitable<void> {
       boost::beast::get_lowest_layer(stream).expires_after(timeout);

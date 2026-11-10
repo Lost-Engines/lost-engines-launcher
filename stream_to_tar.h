@@ -62,25 +62,25 @@ void stream_to_tar(std::istream &stream,                                      //
   }};
 
   for(;;) {
-    struct {                                                                 // offset
-      char name[100];                                                        //   0    filename
-      char mode[8];                                                          // 100    file mode
-      char uid[8];                                                           // 108    user ID
-      char gid[8];                                                           // 116    group ID
-      char size[12];                                                         // 124    file size, in octal
-      char mtime[12];                                                        // 136    modification time
-      char chksum[8];                                                        // 148    header checksum
-      char typeflag;                                                         // 156    file type
-      char linkname[100];                                                    // 157    link target
-      char magic[6];                                                         // 257    TAR format identifier
-      char version[2];                                                       // 263    format version
-      char uname[32];                                                        // 265    user name
-      char gname[32];                                                        // 297    group name
-      char devmajor[8];                                                      // 329    device major number
-      char devminor[8];                                                      // 337    device minor number
-      char prefix[155];                                                      // 345    USTAR filename prefix
-      char padding[12];                                                      // 500    padding to reach 512 bytes
-    } header;                                                                // 512
+    struct {                                                                    // offset
+      char name[100];                                                           //   0    filename
+      char mode[8];                                                             // 100    file mode
+      char uid[8];                                                              // 108    user ID
+      char gid[8];                                                              // 116    group ID
+      char size[12];                                                            // 124    file size, in octal
+      char mtime[12];                                                           // 136    modification time
+      char chksum[8];                                                           // 148    header checksum
+      char typeflag;                                                            // 156    file type
+      char linkname[100];                                                       // 157    link target
+      char magic[6];                                                            // 257    TAR format identifier
+      char version[2];                                                          // 263    format version
+      char uname[32];                                                           // 265    user name
+      char gname[32];                                                           // 297    group name
+      char devmajor[8];                                                         // 329    device major number
+      char devminor[8];                                                         // 337    device minor number
+      char prefix[155];                                                         // 345    USTAR filename prefix
+      char padding[12];                                                         // 500    padding to reach 512 bytes
+    } header;                                                                   // 512
     static_assert(sizeof(header) == 512);
 
     auto constexpr header_size{static_cast<std::streamsize>(sizeof(header))};
@@ -90,7 +90,7 @@ void stream_to_tar(std::istream &stream,                                      //
 
     auto const bytes{reinterpret_cast<unsigned char const*>(&header)};
     if(std::all_of(bytes, bytes + sizeof(header), [](unsigned char const byte){return byte == 0;})) {
-      stream.ignore(std::numeric_limits<std::streamsize>::max());              // consume the tail, allowing a gzip stream to finish and check its trailer
+      stream.ignore(std::numeric_limits<std::streamsize>::max());               // consume the tail, allowing a gzip stream to finish and check its trailer
       if(stream.bad()) throw std::runtime_error{"Failed to finish reading TAR stream"};
       return;
     }
@@ -116,10 +116,10 @@ void stream_to_tar(std::istream &stream,                                      //
     entry_buffer buffer{stream, entry.size};
     std::istream contents{&buffer};
     contents.exceptions(std::ios::badbit);
-    if(!metadata) on_entry(entry, contents);                                   // contents is valid only for the duration of this callback
+    on_entry(entry, contents);                                                  // contents is valid only for the duration of this callback
     if(contents.bad()) throw std::runtime_error{"Failed to read TAR file contents"};
     contents.clear();
-    contents.ignore(std::numeric_limits<std::streamsize>::max());              // discard anything the callback did not consume
+    contents.ignore(std::numeric_limits<std::streamsize>::max());               // discard anything the callback did not consume
 
     auto const padding{static_cast<std::streamsize>((512u - entry.size % 512u) % 512u)};
     stream.ignore(padding);
