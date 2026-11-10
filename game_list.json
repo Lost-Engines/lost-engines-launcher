@@ -21,6 +21,12 @@
             "macos_intel": null,
             "macos_arm": "apache-macos.tar.gz"
           },
+          "executables": {
+            "windows": "apache\\apache.exe",
+            "linux": "apache/apache",
+            "macos_intel": null,
+            "macos_arm": "apache/apache"
+          },
           "repo_url": "https://github.com/Lost-Engines/apache-cpp"
         },
         "apache-redux": {
@@ -31,6 +37,12 @@
             "linux": "apache-linux.tar.gz",
             "macos_intel": null,
             "macos_arm": "apache-macos.tar.gz"
+          },
+          "executables": {
+            "windows": "apache\\apache.exe",
+            "linux": "apache/apache",
+            "macos_intel": null,
+            "macos_arm": "apache/apache"
           },
           "repo_url": "https://github.com/Lost-Engines/apache-redux"
 
@@ -58,6 +70,12 @@
             "macos_intel": null,
             "macos_arm": "corncob-macos.tar.gz"
           },
+          "executables": {
+            "windows": "corncob\\corncob.exe",
+            "linux": "corncob/corncob",
+            "macos_intel": null,
+            "macos_arm": "corncob/corncob"
+          },
           "repo_url": "https://github.com/Lost-Engines/corncob-cpp"
         },
         "corncob-redux": {
@@ -68,6 +86,12 @@
             "linux": "corncob-redux-linux.tar.gz",
             "macos_intel": null,
             "macos_arm": "corncob-redux-macos.tar.gz"
+          },
+          "executables": {
+            "windows": "corncob\\corncob.exe",
+            "linux": "corncob/corncob",
+            "macos_intel": null,
+            "macos_arm": "corncob/corncob"
           },
           "repo_url": "https://github.com/Lost-Engines/corncob-redux"
         }
@@ -95,6 +119,12 @@
             "macos_intel": null,
             "macos_arm": "darker-macos.tar.gz"
           },
+          "executables": {
+            "windows": "darker\\darker.exe",
+            "linux": "darker/darker",
+            "macos_intel": null,
+            "macos_arm": "darker/darker"
+          },
           "repo_url": "https://github.com/Lost-Engines/darker-cpp"
         },
         "darker-redux": {
@@ -105,6 +135,12 @@
             "linux": "darker-linux.tar.gz",
             "macos_intel": null,
             "macos_arm": "darker-macos.tar.gz"
+          },
+          "executables": {
+            "windows": "darker\\darker.exe",
+            "linux": "darker/darker",
+            "macos_intel": null,
+            "macos_arm": "darker/darker"
           },
           "repo_url": "https://github.com/Lost-Engines/darker-redux"
         }
@@ -131,6 +167,12 @@
             "macos_intel": null,
             "macos_arm": "earthsiege-cpp-macos-arm64.tar.gz"
           },
+          "executables": {
+            "windows": "earthsiege-cpp\\earthsiege.exe",
+            "linux": "earthsiege-cpp/earthsiege",
+            "macos_intel": null,
+            "macos_arm": "earthsiege-cpp/earthsiege"
+          },
           "repo_url": "https://github.com/Lost-Engines/earthsiege-cpp"
         }
       },
@@ -156,6 +198,12 @@
             "macos_intel": "tfx-cpp-macos-x86_64.tar.gz",
             "macos_arm": null
           },
+          "executables": {
+            "windows": "tfx-cpp\\tfx.exe",
+            "linux": "tfx-cpp/tfx",
+            "macos_intel": "tfx-cpp/tfx",
+            "macos_arm": null
+          },
           "repo_url": "https://github.com/Lost-Engines/tfx-cpp"
         },
         "tfx-redux": {
@@ -166,6 +214,12 @@
             "linux": "tfx-redux-linux-x86_64.tar.gz",
             "macos_intel": "tfx-redux-macos-x86_64.tar.gz",
             "macos_arm": "tfx-redux-macos-arm64.tar.gz"
+          },
+          "executables": {
+            "windows": "tfx-redux\\tfx.exe",
+            "linux": "tfx-redux/tfx",
+            "macos_intel": "tfx-redux/tfx",
+            "macos_arm": "tfx-redux/tfx"
           },
           "repo_url": "https://github.com/Lost-Engines/tfx-redux"
         }
