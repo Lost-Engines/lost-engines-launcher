@@ -16,10 +16,12 @@ void init_graphics(std::string const &window_title) {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-  vec2ui constexpr window_size{600, 800};
+  vec2ui constexpr window_size{800, 800};
 
   float const main_scale{ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor())};
   GLFWwindow *window{glfwCreateWindow(static_cast<int>(window_size.x * main_scale), static_cast<int>(window_size.y * main_scale), window_title.c_str(), nullptr, nullptr)};
+
+  glfwSetWindowSizeLimits(window, window_size.x, 200, window_size.x, GLFW_DONT_CARE);
   if(window == nullptr) throw std::runtime_error("Failed to create window");
 
   glfwMakeContextCurrent(window);
