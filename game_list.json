@@ -15,13 +15,23 @@
         "apache-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Apache C++",
-          "binary_name": "apache",
+          "packages": {
+            "windows": "apache-windows.zip",
+            "linux": "apache-linux.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "apache-macos.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/apache-cpp"
         },
         "apache-redux": {
           "description": "Reconstruction with graphical & gameplay improvements",
           "name": "Apache Redux",
-          "binary_name": "apache",
+          "packages": {
+            "windows": "apache-windows.zip",
+            "linux": "apache-linux.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "apache-macos.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/apache-redux"
 
         }
@@ -42,13 +52,23 @@
         "corncob-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Corncob C++",
-          "binary_name": "corncob",
+          "packages": {
+            "windows": "corncob-windows.zip",
+            "linux": "corncob-linux.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "corncob-macos.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/corncob-cpp"
         },
         "corncob-redux": {
           "description": "Reconstruction with graphical & gameplay improvements",
           "name": "Corncob Redux",
-          "binary_name": "corncob",
+          "packages": {
+            "windows": "corncob-redux-windows.zip",
+            "linux": "corncob-redux-linux.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "corncob-redux-macos.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/corncob-redux"
         }
       },
@@ -69,13 +89,23 @@
         "darker-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Darker C++",
-          "binary_name": "darker",
+          "packages": {
+            "windows": "darker-windows.zip",
+            "linux": "darker-linux.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "darker-macos.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/darker-cpp"
         },
         "darker-redux": {
           "description": "Reconstruction with graphical & gameplay improvements",
           "name": "Darker Redux",
-          "binary_name": "darker",
+          "packages": {
+            "windows": "darker-windows.zip",
+            "linux": "darker-linux.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "darker-macos.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/darker-redux"
         }
       },
@@ -95,7 +125,12 @@
         "earthsiege-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Earthsiege C++",
-          "binary_name": "earthsiege",
+          "packages": {
+            "windows": "earthsiege-cpp-windows-x86_64.zip",
+            "linux": "earthsiege-cpp-linux-x86_64.tar.gz",
+            "macos_intel": null,
+            "macos_arm": "earthsiege-cpp-macos-arm64.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/earthsiege-cpp"
         }
       },
@@ -115,13 +150,23 @@
         "tfx-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "TFX C++",
-          "binary_name": "tfx",
+          "packages": {
+            "windows": "tfx-cpp-windows-x86_64.zip",
+            "linux": "tfx-cpp-linux-x86_64.tar.gz",
+            "macos_intel": "tfx-cpp-macos-x86_64.tar.gz",
+            "macos_arm": null
+          },
           "repo_url": "https://github.com/Lost-Engines/tfx-cpp"
         },
         "tfx-redux": {
           "description": "Reconstruction with graphical & interface improvements",
           "name": "TFX Redux",
-          "binary_name": "tfx",
+          "packages": {
+            "windows": "tfx-redux-windows-x86_64.zip",
+            "linux": "tfx-redux-linux-x86_64.tar.gz",
+            "macos_intel": "tfx-redux-macos-x86_64.tar.gz",
+            "macos_arm": "tfx-redux-macos-arm64.tar.gz"
+          },
           "repo_url": "https://github.com/Lost-Engines/tfx-redux"
         }
       },
