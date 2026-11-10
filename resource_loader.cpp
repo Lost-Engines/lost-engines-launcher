@@ -1,14 +1,26 @@
 #include "resource_loader.h"
+#include "platform_defines.h"
+#include <algorithm>
+#include <cerrno>
 #include <chrono>
+#include <ctime>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <iterator>
+#include <map>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
+#if defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+  #include <fcntl.h>
+  #include <sys/stat.h>
+#endif
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <boost/asio/ssl.hpp>
@@ -21,7 +33,6 @@
 #define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include <miniz-cpp/zip_file.hpp>
 #undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
-#include "platform_defines.h"
 #include "memorystorm/memorystorm.h"
 #include "stream_to_tar.h"
 
@@ -121,6 +132,162 @@ auto download(boost::urls::url url, std::string const accept, std::function<void
   }
 }
 
+auto resolve_archive_path(std::filesystem::path const &root, std::string const &name)->std::filesystem::path {
+  std::filesystem::path const path{name};
+  if(path.empty() || path.has_root_path() || name.find('\0') != std::string::npos) throw std::runtime_error{"Archive entry must have a relative path"};
+  for(auto const &component : path) {
+    if(component == "..") throw std::runtime_error{"Archive entry must stay within the installation directory"};
+  }
+  auto result{(root / path).lexically_normal()};
+  if(result != root && result.filename().empty()) result = result.parent_path();
+  return result;
+}
+
+void require_archive_path(std::filesystem::path const &root, std::filesystem::path const &path) {
+  /// Include existing links when checking where an archive path leads
+  auto const relative{std::filesystem::weakly_canonical(path).lexically_relative(root)};
+  if(relative.empty() || relative.is_absolute() || *relative.begin() == "..") {
+    throw std::runtime_error{"Archive link must stay within the installation directory"};
+  }
+}
+
+struct archive_metadata {
+  std::filesystem::path path;
+  std::chrono::sys_time<std::chrono::nanoseconds> mtime;
+  std::optional<std::filesystem::perms> permissions;
+  bool directory{false};
+};
+
+void restore_archive_metadata(std::filesystem::path const &root, std::vector<archive_metadata> const &entries) {
+  /// The final occurrence of a path supplies its metadata; restore directories after their descendants
+  std::map<std::filesystem::path, size_t> last_entry;
+  for(size_t i{0}; i != entries.size(); ++i) last_entry[entries[i].path] = i;
+  std::vector<archive_metadata> metadata;
+  for(size_t i{0}; i != entries.size(); ++i) {
+    if(last_entry.at(entries[i].path) == i) metadata.push_back(entries[i]);
+  }
+  std::stable_sort(metadata.begin(), metadata.end(), [](auto const &left, auto const &right) {
+    if(left.directory != right.directory) return !left.directory;
+    if(!left.directory) return false;
+    return std::distance(left.path.begin(), left.path.end()) > std::distance(right.path.begin(), right.path.end());
+  });
+  for(auto const &entry : metadata) {
+    if(entry.path != root) require_archive_path(root, entry.path.parent_path());
+    #if defined(PLATFORM_WINDOWS)
+      #if __cpp_lib_chrono >= 201907L
+        std::filesystem::last_write_time(entry.path, std::chrono::clock_cast<std::chrono::file_clock>(entry.mtime));
+      #else
+        std::filesystem::last_write_time(entry.path, std::chrono::file_clock::from_sys(entry.mtime));
+      #endif
+    #elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+      auto const seconds{std::chrono::floor<std::chrono::seconds>(entry.mtime.time_since_epoch())};
+      auto const fraction{entry.mtime.time_since_epoch() - seconds};
+      timespec const times[2]{
+        {.tv_sec{0}, .tv_nsec{UTIME_OMIT}},                                     // preserve access time
+        {.tv_sec{static_cast<time_t>(seconds.count())}, .tv_nsec{static_cast<long>(fraction.count())}},
+      };
+      if(::utimensat(AT_FDCWD, entry.path.c_str(), times, AT_SYMLINK_NOFOLLOW) != 0) {
+        throw std::system_error{errno, std::generic_category(), "Failed to restore archive modification time for " + entry.path.string()};
+      }
+      if(entry.permissions && !std::filesystem::is_symlink(std::filesystem::symlink_status(entry.path))) {
+        std::filesystem::permissions(entry.path, *entry.permissions);
+      }
+    #endif
+  }
+}
+
+#if defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+void extract_tar(std::istream &input, std::filesystem::path const &root) {
+  /// Restore streamed entries, deferring forward hard links and directory metadata
+  struct hard_link {
+    std::filesystem::path target;
+    bool has_contents{false};
+  };
+  std::map<std::filesystem::path, hard_link> hard_links;
+  std::vector<archive_metadata> metadata;
+  auto prepare_file{[&root](std::filesystem::path const &path) {
+    if(path == root) throw std::runtime_error{"Archive file cannot replace the installation directory"};
+    require_archive_path(root, path.parent_path());
+    std::filesystem::create_directories(path.parent_path());
+    if(std::filesystem::is_directory(std::filesystem::symlink_status(path))) {
+      throw std::runtime_error{"Archive file cannot replace a directory"};
+    }
+    std::filesystem::remove(path);                                            // replace an existing link rather than writing through it
+  }};
+  auto resolve_hard_links{[&](bool const final) {
+    while(!hard_links.empty()) {
+      bool progress{false};
+      for(auto link{hard_links.begin()}; link != hard_links.end();) {
+        auto const &[path, properties]{*link};
+        if(hard_links.contains(properties.target)) {
+          ++link;
+          continue;
+        }
+        require_archive_path(root, properties.target);
+        auto const status{std::filesystem::symlink_status(properties.target)};
+        if(std::filesystem::is_regular_file(status) || std::filesystem::is_symlink(status)) {
+          prepare_file(path);
+          std::filesystem::create_hard_link(properties.target, path);
+        } else if(std::filesystem::exists(status)) {
+          throw std::runtime_error{"Archive hard link target is not a file: " + properties.target.string()};
+        } else if(!final || !properties.has_contents) {
+          ++link;
+          continue;
+        }
+        link = hard_links.erase(link);
+        progress = true;
+      }
+      if(!progress) {
+        if(!final) return;
+        auto const anchor{std::find_if(hard_links.begin(), hard_links.end(), [](auto const &link){return link.second.has_contents;})};
+        if(anchor == hard_links.end()) throw std::runtime_error{"Archive has unresolved or cyclic hard links"};
+        hard_links.erase(anchor);                                            // a link carrying file contents can supply the inode for a cycle
+      }
+    }
+  }};
+  stream_to_tar(input, [&](stream_to_tar_entry const &entry, std::istream &contents) {
+    auto const path{resolve_archive_path(root, entry.filename)};
+    hard_links.erase(path);                                                  // a later entry replaces any unresolved link at this path
+    if(entry.type == stream_to_tar_entry_type::directory) {
+      if(path != root) require_archive_path(root, path.parent_path());
+      if(std::filesystem::is_symlink(std::filesystem::symlink_status(path))) std::filesystem::remove(path);
+      std::filesystem::create_directories(path);
+    } else if(entry.type == stream_to_tar_entry_type::symbolic_link) {
+      std::filesystem::path const target{entry.linkname};
+      if(target.empty() || target.has_root_path() || entry.linkname.find('\0') != std::string::npos) {
+        throw std::runtime_error{"Archive symbolic link must have a relative target"};
+      }
+      require_archive_path(root, path.parent_path() / target);
+      prepare_file(path);
+      std::filesystem::create_symlink(target, path);
+    } else {
+      std::filesystem::path target;
+      if(entry.type == stream_to_tar_entry_type::hard_link) target = resolve_archive_path(root, entry.linkname);
+      prepare_file(path);
+      if(entry.type == stream_to_tar_entry_type::file || entry.size != 0) {
+        std::ofstream output{path, std::ios::binary | std::ios::trunc};
+        output.exceptions(std::ios::badbit | std::ios::failbit);
+        if(entry.size != 0) output << contents.rdbuf();
+        output.close();
+      }
+      if(entry.type == stream_to_tar_entry_type::hard_link) {
+        if(path == target && entry.size == 0) throw std::runtime_error{"Archive hard link cannot refer to itself without contents"};
+        if(path != target) hard_links[path] = {.target{target}, .has_contents{entry.size != 0}};
+      }
+    }
+    metadata.push_back({
+      .path{path},
+      .mtime{entry.mtime},
+      .permissions{static_cast<std::filesystem::perms>(entry.mode & 0777u)},
+      .directory{entry.type == stream_to_tar_entry_type::directory},
+    });
+    resolve_hard_links(false);                                               // bind links to the target inode as soon as it is available
+  });
+  resolve_hard_links(true);
+  restore_archive_metadata(root, metadata);
+}
+#endif
+
 } // anonymous namespace
 
 resource_loader::resource_loader(launcher_state &this_state)
@@ -190,20 +357,25 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
       std::cout << "Downloaded " << memorystorm::human_readable(archive.size()) << ", installing in " << destination << std::endl;
       std::filesystem::create_directories(destination);
       auto const root{std::filesystem::canonical(destination)};
-      auto resolve_path{[&root](std::string const &name)->std::filesystem::path {
-        std::filesystem::path const path{name};
-        if(path.empty() || path.has_root_path()) throw std::runtime_error{"Archive entry must have a relative path"};
-        for(auto const &component : path) {
-          if(component == "..") throw std::runtime_error{"Archive entry must stay within the installation directory"};
-        }
-        return root / path;
-      }};
 
       #if defined(PLATFORM_WINDOWS)
         miniz_cpp::zip_file package{archive};
+        std::vector<archive_metadata> metadata;
         for(auto const &entry : package.infolist()) {
-          auto const path{resolve_path(entry.filename)};
-          if(entry.filename.back() == '/') {
+          auto const path{resolve_archive_path(root, entry.filename)};
+          std::tm time{};
+          time.tm_sec = entry.date_time.seconds;
+          time.tm_min = entry.date_time.minutes;
+          time.tm_hour = entry.date_time.hours;
+          time.tm_mday = entry.date_time.day;
+          time.tm_mon = entry.date_time.month - 1;
+          time.tm_year = entry.date_time.year - 1900;
+          time.tm_isdst = -1;
+          auto const modified{std::mktime(&time)};
+          if(modified == std::time_t{-1}) throw std::runtime_error{"Invalid ZIP modification time"};
+          bool const directory{entry.filename.back() == '/'};
+          metadata.push_back({.path{path}, .mtime{std::chrono::system_clock::from_time_t(modified)}, .permissions{std::nullopt}, .directory{directory}});
+          if(directory) {
             std::filesystem::create_directories(path);
             continue;
           }
@@ -213,24 +385,13 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
           output << package.read(entry);
           output.close();
         }
+        restore_archive_metadata(root, metadata);
       #elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
         boost::iostreams::filtering_istream input;
         input.push(boost::iostreams::gzip_decompressor{});
         input.push(boost::iostreams::array_source{reinterpret_cast<char const*>(archive.data()), archive.size()});
         input.exceptions(std::ios::badbit);
-        stream_to_tar(input, [&](stream_to_tar_entry const &entry, std::istream &contents) {
-          auto const path{resolve_path(entry.filename)};
-          if(entry.is_directory) {
-            std::filesystem::create_directories(path);
-            return;
-          }
-          std::filesystem::create_directories(path.parent_path());
-          std::ofstream output{path, std::ios::binary | std::ios::trunc};
-          output.exceptions(std::ios::badbit | std::ios::failbit);
-          if(entry.size != 0) output << contents.rdbuf();
-          output.close();
-          std::filesystem::permissions(path, static_cast<std::filesystem::perms>(entry.mode & 0777u));
-        });
+        extract_tar(input, root);
       #else
         #error "Platform must be defined for installation"
       #endif
