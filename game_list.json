@@ -10,6 +10,7 @@
         "Digital Integration",
         "Interactive Magic"
       ],
+      "analysis_url": "https://lostengines.com/apache",
       "versions": {
         "apache-cpp": {
           "description": "Faithful reconstruction of the original game",
@@ -33,6 +34,7 @@
       "publishers": [
         "MVP Software"
       ],
+      "analysis_url": "https://lostengines.com/corncob",
       "versions": {
         "corncob-cpp": {
           "description": "Faithful reconstruction of the original game",
@@ -57,6 +59,7 @@
       "publishers": [
         "Psygnosis"
       ],
+      "analysis_url": "https://lostengines.com/darker",
       "versions": {
         "darker-cpp": {
           "description": "Faithful reconstruction of the original game",
@@ -80,6 +83,7 @@
       "publishers": [
         "Sierra On-Line"
       ],
+      "analysis_url": "https://lostengines.com/earthsiege",
       "versions": {
         "earthsiege-cpp": {
           "description": "Faithful reconstruction of the original game",
@@ -98,6 +102,7 @@
       "publishers": [
         "Ocean"
       ],
+      "analysis_url": "https://lostengines.com/tfx",
       "versions": {
         "tfx-cpp": {
           "description": "Faithful reconstruction of the original game",
