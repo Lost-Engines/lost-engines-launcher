@@ -70,8 +70,58 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     break;
   }
 
-  for(auto const &game : state.game_list->operator[]("games")) {
-    ImGui::TextUnformatted(game["name"].get<std::string>().c_str());
+  if(ImGui::BeginTable("Games", 7, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg)) {
+    ImGui::TableSetupColumn("Name");
+    ImGui::TableSetupColumn("Build",   ImGuiTableColumnFlags_WidthFixed, 120.0f);
+    ImGui::TableSetupColumn("Run",     ImGuiTableColumnFlags_WidthFixed);
+    ImGui::TableSetupColumn("Docs",    ImGuiTableColumnFlags_WidthFixed, 80.0f);
+    ImGui::TableSetupColumn("Source",  ImGuiTableColumnFlags_WidthFixed);
+    ImGui::TableSetupColumn("Explore", ImGuiTableColumnFlags_WidthFixed);
+    ImGui::TableSetupColumn("Config",  ImGuiTableColumnFlags_WidthFixed, 30.0f);
+    ImGui::TableHeadersRow();
+
+    for(auto const &game : state.game_list->operator[]("games")) {
+      auto const &name{game["name"].get<std::string>()};
+      ImGui::PushID(name.c_str());
+      ImGui::TableNextRow();
+      ImGui::TableSetColumnIndex(0);
+      ImGui::TextUnformatted(name.c_str());
+
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-FLT_MIN);                                        // stretch combo to column width
+      if(ImGui::BeginCombo("##version_select", state.selected_game_versions[name].c_str())) {
+        for(auto const &[version_name, this_version] : game["versions"].items()) {
+          bool const is_selected{version_name == state.selected_game_versions[name]};
+          if(ImGui::Selectable(version_name.c_str(), is_selected)) state.selected_game_versions[name] = version_name;
+          if(is_selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+      }
+      //ImGui::Button(game["preferred_version"].get<std::string>().c_str());
+      // TODO: variant dropdown
+
+      ImGui::TableNextColumn();
+      ImGui::Button("Download");
+      // TODO: proper buttons
+
+      ImGui::TableNextColumn();
+      // TODO: dropdown with docs links
+
+      ImGui::TableNextColumn();
+      ImGui::Button("Source code");
+      // TODO, link emoji
+
+      ImGui::TableNextColumn();
+      ImGui::Button("Analysis");
+      // TODO, link emoji
+
+      ImGui::TableNextColumn();
+      ImGui::Button("...");
+      // TODO: dropdown
+      ImGui::PopID();
+    }
+
+    ImGui::EndTable();
   }
 
   ImGui::End();
