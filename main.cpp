@@ -63,7 +63,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     ImGui::TextUnformatted("Downloading game list...");
     break;
   case launcher_state::update_state::updating:
-    // TODO: any action here?  Is this a possible value for this enum?
+    ImGui::TextUnformatted("Updating game list...");
     break;
   case launcher_state::update_state::up_to_date:
     ImGui::TextUnformatted("Game list loaded");
