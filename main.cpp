@@ -42,9 +42,6 @@ void draw_window(launcher_state &state, resource_loader &loader) {
   case launcher_state::update_state::updating:
     ImGui::TextUnformatted("Updating launcher...");
     break;
-  case launcher_state::update_state::pending_processing:
-    // TODO: any action this thread needs to take
-    break;
   case launcher_state::update_state::up_to_date:
     ImGui::TextUnformatted("Launcher up to date");
     // TODO: we don't need to show anything for this state really, this is just for the WIP
@@ -56,7 +53,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
     loader.fetch_game_list();
     break;
   case launcher_state::update_state::failed_to_connect:
-    if(state.game_list.empty()) {
+    if(state.game_list.get().empty()) {
       ImGui::TextUnformatted("Failed to connect to loader repository, no game list available!");
     } else {
       ImGui::TextUnformatted("Failed to connect to loader repository, game list updates unavailable");
@@ -68,12 +65,13 @@ void draw_window(launcher_state &state, resource_loader &loader) {
   case launcher_state::update_state::updating:
     // TODO: any action here?  Is this a possible value for this enum?
     break;
-  case launcher_state::update_state::pending_processing:
-    // TODO: any action this thread needs to take
-    break;
   case launcher_state::update_state::up_to_date:
     ImGui::TextUnformatted("Game list loaded");
     break;
+  }
+
+  for(auto const &game : state.game_list->operator[]("games")) {
+    ImGui::TextUnformatted(game["name"].get<std::string>().c_str());
   }
 
   ImGui::End();
@@ -87,9 +85,9 @@ auto main()->int {
   load_config(state);
 
   if(std::filesystem::exists(state.game_list_file)) {
-    state.game_list = nlohmann::ordered_json::parse(std::ifstream{state.game_list_file});
+    *state.game_list = nlohmann::ordered_json::parse(std::ifstream{state.game_list_file});
   }
-  std::cout << state.game_list["games"].size() << " games in current list at " << state.game_list_file << std::endl;
+  std::cout << state.game_list->operator[]("games").size() << " games in current list at " << state.game_list_file << std::endl;
 
   resource_loader loader{state};
 

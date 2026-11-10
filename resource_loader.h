@@ -1,16 +1,19 @@
 #pragma once
+#include <stop_token>
 #include <thread>
+#include <vector>
 #include <boost/asio.hpp>
 #include "launcher_state.h"
 
 class resource_loader {
   launcher_state &state;
 
-  std::jthread thread{[&]{
+  boost::asio::io_context io_context;
+  boost::asio::executor_work_guard<boost::asio::io_context::executor_type> network_work{boost::asio::make_work_guard(io_context)};
+  std::vector<std::jthread> network_threads;
+  std::jthread thread{[this]{
     run();
   }};
-  std::vector<std::jthread> network_threads;
-  boost::asio::io_context io_context;
 
 public:
   resource_loader(launcher_state &this_state);

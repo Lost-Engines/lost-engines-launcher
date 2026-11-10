@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/thread/synchronized_value.hpp>
 #include <boost/url/urls.hpp>
 #include <nlohmann/json.hpp>
 #include "platform_paths.h"
@@ -15,7 +16,6 @@ struct launcher_state {
     outdated,
     downloading,
     updating,
-    pending_processing,
     up_to_date,
   };
   std::atomic<update_state> launcher_update_state{update_state::not_tried};
@@ -25,7 +25,7 @@ struct launcher_state {
   std::filesystem::path game_list_file;
   boost::urls::url game_list_url;
 
-  nlohmann::json game_list;
+  boost::synchronized_value<nlohmann::ordered_json> game_list;
 
   boost::property_tree::ptree config;
 };

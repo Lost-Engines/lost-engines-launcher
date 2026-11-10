@@ -67,6 +67,7 @@ find_package(Threads REQUIRED)
 find_package(Boost 1.90.0 COMPONENTS url REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 include_directories(BEFORE SYSTEM include)
 include_directories(BEFORE .)
@@ -89,7 +90,9 @@ add_executable(lost-engines-launcher
 target_link_libraries(lost-engines-launcher PRIVATE
   glfw
   OpenGL::GL
+  OpenSSL::SSL
   Boost::url
+  Threads::Threads
   ${CMAKE_DL_LIBS}
 )
 
