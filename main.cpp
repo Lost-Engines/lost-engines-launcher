@@ -11,6 +11,7 @@
 #include "resource_loader.h"
 #include "open_url.h"
 #include "stream_string.h"
+#include "get_game_download_url.h"
 
 void draw_window(launcher_state &state, resource_loader &loader) {
   ImGuiViewport const &viewport{*ImGui::GetMainViewport()};
@@ -104,7 +105,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
             std::ostringstream tooltip_ss;
             tooltip_ss << "Build variant: " << version_name << "\n";
             for(auto const &[key, value] : this_version.items()) {              // list all of this version's properties in the tooltip
-              tooltip_ss << key << ": " << value.get<std::string>() << "\n";
+              tooltip_ss << key << ": " << value.dump(2) << "\n";
             }
             tooltip_ss << "Recommended variant for this game: " << game["preferred_version"].get<std::string>();
             ImGui::SetItemTooltip(tooltip_ss.str().c_str());
@@ -120,6 +121,8 @@ void draw_window(launcher_state &state, resource_loader &loader) {
       switch(game_files_state.game_download_state) {
       case launcher_state::game_files_state::download_states::not_started:
         if(ImGui::Button("Download")) {
+          auto const &game_download_url{get_game_download_url(game["versions"][state.selected_game_versions[name]])};
+          std::cout << "DEBUG: would download from " << game_download_url << std::endl;
           // TODO
         }
         ImGui::SetItemTooltip("Download game and data to default directories");
@@ -146,6 +149,12 @@ void draw_window(launcher_state &state, resource_loader &loader) {
           }
           ImGui::SetItemTooltip("Choose this if you already have a copy of the original game installed, and want to use its data files");
           */
+
+          if(ImGui::Button("Fetch game package manually")) {
+            open_url(get_game_download_url(game["versions"][state.selected_game_versions[name]]));
+            ImGui::CloseCurrentPopup();
+          }
+          ImGui::SetItemTooltip("Manually open the game package download URL in your browser");
           ImGui::EndCombo();
         }
         ImGui::SetItemTooltip("Download options");
@@ -219,6 +228,8 @@ void draw_window(launcher_state &state, resource_loader &loader) {
 
     ImGui::EndTable();
   }
+
+  // TODO: catch exceptions thrown by json parsing and report them in a friendly way to the user, advise them to make sure the game list and launcher are both up to date
 
   ImGui::End();
 }
