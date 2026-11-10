@@ -64,10 +64,11 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
 find_package(Threads REQUIRED)
-find_package(Boost 1.90.0 COMPONENTS url REQUIRED)
+find_package(Boost 1.90.0 COMPONENTS url iostreams REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
 
 include_directories(BEFORE SYSTEM include)
 include_directories(BEFORE .)
@@ -97,6 +98,8 @@ target_link_libraries(lost-engines-launcher PRIVATE
   OpenGL::GL
   OpenSSL::SSL
   Boost::url
+  Boost::iostreams
+  ZLIB::ZLIB
   Threads::Threads
   ${CMAKE_DL_LIBS}
 )

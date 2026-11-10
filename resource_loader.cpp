@@ -1,6 +1,8 @@
 #include "resource_loader.h"
 #include <chrono>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
@@ -12,9 +14,16 @@
 #include <boost/asio/ssl.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/url/parse.hpp>
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+#include <miniz-cpp/zip_file.hpp>
+#undef MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 #include "platform_defines.h"
 #include "memorystorm/memorystorm.h"
+#include "stream_to_tar.h"
 
 namespace {
 
@@ -179,12 +188,48 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
       })};
       files_state.game_download_state.store(launcher_state::game_files_state::download_states::done, std::memory_order_release);
       std::cout << "Downloaded " << memorystorm::human_readable(archive.size()) << ", installing in " << destination << std::endl;
+      std::filesystem::create_directories(destination);
+      auto const root{std::filesystem::canonical(destination)};
+      auto resolve_path{[&root](std::string const &name)->std::filesystem::path {
+        std::filesystem::path const path{name};
+        if(path.empty() || path.has_root_path()) throw std::runtime_error{"Archive entry must have a relative path"};
+        for(auto const &component : path) {
+          if(component == "..") throw std::runtime_error{"Archive entry must stay within the installation directory"};
+        }
+        return root / path;
+      }};
+
       #if defined(PLATFORM_WINDOWS)
-        // TODO
-      #elif defined(PLATFORM_LINUX)
-        // TODO
-      #elif defined(PLATFORM_MACOS)
-        // TODO
+        miniz_cpp::zip_file package{archive};
+        for(auto const &entry : package.infolist()) {
+          auto const path{resolve_path(entry.filename)};
+          if(entry.filename.back() == '/') {
+            std::filesystem::create_directories(path);
+            continue;
+          }
+          std::filesystem::create_directories(path.parent_path());
+          std::ofstream output{path, std::ios::binary | std::ios::trunc};
+          output.exceptions(std::ios::badbit | std::ios::failbit);
+          output << package.read(entry);
+          output.close();
+        }
+      #elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
+        boost::iostreams::filtering_istream input;
+        input.push(boost::iostreams::gzip_decompressor{});
+        input.push(boost::iostreams::array_source{reinterpret_cast<char const*>(archive.data()), archive.size()});
+        input.exceptions(std::ios::badbit);
+        stream_to_tar(input, [&](stream_to_tar_entry const &entry, std::istream &contents) {
+          auto const path{resolve_path(entry.filename)};
+          if(entry.is_directory) {
+            std::filesystem::create_directories(path);
+            return;
+          }
+          std::filesystem::create_directories(path.parent_path());
+          std::ofstream output{path, std::ios::binary | std::ios::trunc};
+          output.exceptions(std::ios::badbit | std::ios::failbit);
+          if(entry.size != 0) output << contents.rdbuf();
+          output.close();
+        });
       #else
         #error "Platform must be defined for installation"
       #endif
