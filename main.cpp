@@ -81,7 +81,7 @@ void draw_window(launcher_state &state, resource_loader &loader) {
   if(ImGui::BeginTable("Games", 7, ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg)) {
     ImGui::TableSetupColumn("Name");
     ImGui::TableSetupColumn("Build",   ImGuiTableColumnFlags_WidthFixed, 120.0f);
-    ImGui::TableSetupColumn("Run",     ImGuiTableColumnFlags_WidthFixed);
+    ImGui::TableSetupColumn("Run",     ImGuiTableColumnFlags_WidthFixed, 120.0f);
     ImGui::TableSetupColumn("Docs",    ImGuiTableColumnFlags_WidthFixed, 80.0f);
     ImGui::TableSetupColumn("Source",  ImGuiTableColumnFlags_WidthFixed);
     ImGui::TableSetupColumn("Explore", ImGuiTableColumnFlags_WidthFixed);
@@ -119,14 +119,14 @@ void draw_window(launcher_state &state, resource_loader &loader) {
       ImGui::SetItemTooltip("Select a build variant to download and run");
 
       ImGui::TableNextColumn();
-      auto &game_files_state{state.game_files_states[name]};
+      auto &game_files_state{state.game_files_states[name + selected_game_version]};
       switch(game_files_state.game_download_state) {
       case launcher_state::game_files_state::download_states::not_started:
-        if(ImGui::Button("Download")) {
+        if(ImGui::Button("Download", {-ImGui::GetFrameHeight(), 0.0f})) {       // extend the button to fill the frame minus width of the dropdown next to it
           auto const &game_download_url{get_game_download_url(game["versions"][selected_game_version])};
           std::filesystem::path install_destination{state.config.get<std::filesystem::path>("default_data_dir") / selected_game_version};
           // TODO: read game destinations specified manually in the config and override the default here
-          loader.install_game(game_download_url, install_destination, state.game_files_states[name + selected_game_version]);
+          loader.install_game(game_download_url, install_destination, game_files_state);
         }
         ImGui::SetItemTooltip("Download game and data to default directories");
 
@@ -163,28 +163,35 @@ void draw_window(launcher_state &state, resource_loader &loader) {
         ImGui::SetItemTooltip("Download options");
         break;
       case launcher_state::game_files_state::download_states::in_progress:
-        ImGui::BeginDisabled();
-        ImGui::Button("Downloading");
-        ImGui::EndDisabled();
-        // TODO: show a progress bar instead of a disabled button
-        ImGui::SetItemTooltip(stream_string{} << "Game files are downloading, progress " << game_files_state.download_progress << "%");
+        ImGui::ProgressBar(game_files_state.download_progress / 100.0f, ImVec2(-FLT_MIN, 0.0f), "Downloading game");
+        if(game_files_state.download_progress.load(std::memory_order_relaxed) >= 0.0f) {
+          ImGui::SetItemTooltip(stream_string{} << "Game files are downloading, progress " << game_files_state.download_progress << "%");
+        } else {
+          ImGui::SetItemTooltip("Game files are downloading");
+        }
         // TODO: small cancel button
         break;
       case launcher_state::game_files_state::download_states::done:
         switch(game_files_state.data_download_state) {
         case launcher_state::game_files_state::download_states::not_started:
-          // TODO: we shouldn't reach this, data download should be queued after game download automatically
+          ImGui::TextUnformatted("Installing game");
           break;
         case launcher_state::game_files_state::download_states::in_progress:
-          ImGui::BeginDisabled();
-          ImGui::Button("Downloading");
-          ImGui::EndDisabled();
-          // TODO: show a progress bar instead of a disabled button
-          ImGui::SetItemTooltip(stream_string{} << "Game data is downloading, progress " << game_files_state.download_progress << "%");
+          ImGui::ProgressBar(game_files_state.download_progress / 100.0f, ImVec2(-FLT_MIN, 0.0f), "Downloading data");
+          if(game_files_state.download_progress.load(std::memory_order_relaxed) >= 0.0f) {
+            ImGui::SetItemTooltip(stream_string{} << "Game data files are downloading, progress " << game_files_state.download_progress << "%");
+          } else {
+            ImGui::SetItemTooltip("Game data files are downloading");
+          }
           // TODO: small cancel button
           break;
         case launcher_state::game_files_state::download_states::done:
         case launcher_state::game_files_state::download_states::not_needed:
+          if(ImGui::Button("Run", {-FLT_MIN, 0.0f})) {
+            // TODO
+          }
+          ImGui::SetItemTooltip("Run the game at ");
+          // TODO: binary path here
           break;
         case launcher_state::game_files_state::download_states::failed:
           if(ImGui::Button("Download failed")) {

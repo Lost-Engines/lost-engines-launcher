@@ -1,6 +1,7 @@
 #include "resource_loader.h"
 #include <chrono>
 #include <exception>
+#include <functional>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -17,7 +18,7 @@
 
 namespace {
 
-auto download(boost::urls::url url, std::string const accept)->boost::asio::awaitable<std::vector<unsigned char>> {
+auto download(boost::urls::url url, std::string const accept, std::function<void(float)> const on_progress = {})->boost::asio::awaitable<std::vector<unsigned char>> {
   auto const executor{co_await boost::asio::this_coro::executor};
   auto constexpr timeout{std::chrono::seconds{30}};
   unsigned int constexpr max_redirects{5};
@@ -52,6 +53,12 @@ auto download(boost::urls::url url, std::string const accept)->boost::asio::awai
       while(!response.is_done()) {
         boost::beast::get_lowest_layer(stream).expires_after(timeout);
         co_await boost::beast::http::async_read_some(stream, buffer, response, boost::asio::use_awaitable);
+        if(on_progress && response.is_header_done() && response.get().result() == boost::beast::http::status::ok) {
+          if(auto const length{response.content_length()}; length) {
+            float const progress{*length == 0 ? 100.0f : static_cast<float>(response.get().body().size()) / static_cast<float>(*length) * 100.0f};
+            on_progress(progress);
+          }
+        }
       }
     }};
 
@@ -161,13 +168,16 @@ void resource_loader::fetch_game_list() {
 void resource_loader::install_game(boost::urls::url const &game_download_url, std::filesystem::path const &destination, launcher_state::game_files_state &files_state) {
   /// Fetch the game package from the given URL and extract it at the destination
   std::cout << "Downloading from " << game_download_url << std::endl;
-  files_state.game_download_state = launcher_state::game_files_state::download_states::in_progress;
+  files_state.download_progress.store(-1.0f, std::memory_order_relaxed);        // unknown until Content-Length is received
+  files_state.game_download_state.store(launcher_state::game_files_state::download_states::in_progress, std::memory_order_release);
 
   boost::asio::co_spawn(
     boost::asio::make_strand(io_context),
     [game_download_url, destination, &files_state]->boost::asio::awaitable<void> {
-      auto const archive{co_await download(game_download_url, "application/octet-stream")};
-      files_state.game_download_state = launcher_state::game_files_state::download_states::done;
+      auto const archive{co_await download(game_download_url, "application/octet-stream", [&files_state](float const progress) {
+        files_state.download_progress.store(progress, std::memory_order_relaxed);
+      })};
+      files_state.game_download_state.store(launcher_state::game_files_state::download_states::done, std::memory_order_release);
       std::cout << "Downloaded " << memorystorm::human_readable(archive.size()) << ", installing in " << destination << std::endl;
       #if defined(PLATFORM_WINDOWS)
         // TODO
@@ -179,10 +189,13 @@ void resource_loader::install_game(boost::urls::url const &game_download_url, st
         #error "Platform must be defined for installation"
       #endif
 
+      files_state.data_download_state.store(launcher_state::game_files_state::download_states::in_progress, std::memory_order_release);
+      // TODO: get data files or mark not_needed if none
+      files_state.data_download_state.store(launcher_state::game_files_state::download_states::done, std::memory_order_release);
     },
     [game_download_url, &files_state](std::exception_ptr const error) {
       if(!error) return;
-      files_state.game_download_state = launcher_state::game_files_state::download_states::failed;
+      files_state.game_download_state.store(launcher_state::game_files_state::download_states::failed, std::memory_order_release);
       try {
         std::rethrow_exception(error);
       } catch(std::exception const &exception) {
