@@ -15,12 +15,15 @@
         "apache-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Apache C++",
+          "binary_name": "apache",
           "repo_url": "https://github.com/Lost-Engines/apache-cpp"
         },
         "apache-redux": {
           "description": "Reconstruction with graphical & gameplay improvements",
           "name": "Apache Redux",
+          "binary_name": "apache",
           "repo_url": "https://github.com/Lost-Engines/apache-redux"
+
         }
       },
       "preferred_version": "apache-redux"
@@ -39,11 +42,13 @@
         "corncob-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Corncob C++",
+          "binary_name": "corncob",
           "repo_url": "https://github.com/Lost-Engines/corncob-cpp"
         },
         "corncob-redux": {
           "description": "Reconstruction with graphical & gameplay improvements",
           "name": "Corncob Redux",
+          "binary_name": "corncob",
           "repo_url": "https://github.com/Lost-Engines/corncob-redux"
         }
       },
@@ -64,11 +69,13 @@
         "darker-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Darker C++",
+          "binary_name": "darker",
           "repo_url": "https://github.com/Lost-Engines/darker-cpp"
         },
         "darker-redux": {
           "description": "Reconstruction with graphical & gameplay improvements",
           "name": "Darker Redux",
+          "binary_name": "darker",
           "repo_url": "https://github.com/Lost-Engines/darker-redux"
         }
       },
@@ -88,6 +95,7 @@
         "earthsiege-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "Earthsiege C++",
+          "binary_name": "earthsiege",
           "repo_url": "https://github.com/Lost-Engines/earthsiege-cpp"
         }
       },
@@ -107,11 +115,13 @@
         "tfx-cpp": {
           "description": "Faithful reconstruction of the original game",
           "name": "TFX C++",
+          "binary_name": "tfx",
           "repo_url": "https://github.com/Lost-Engines/tfx-cpp"
         },
         "tfx-redux": {
           "description": "Reconstruction with graphical & interface improvements",
           "name": "TFX Redux",
+          "binary_name": "tfx",
           "repo_url": "https://github.com/Lost-Engines/tfx-redux"
         }
       },
