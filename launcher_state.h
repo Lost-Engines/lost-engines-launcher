@@ -27,5 +27,7 @@ struct launcher_state {
 
   boost::synchronized_value<nlohmann::ordered_json> game_list;
 
+  std::unordered_map<std::string, std::string> selected_game_versions;
+
   boost::property_tree::ptree config;
 };

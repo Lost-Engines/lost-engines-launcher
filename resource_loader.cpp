@@ -104,7 +104,12 @@ void resource_loader::fetch_game_list() {
       auto new_list = nlohmann::ordered_json::parse(response.body());
       if(new_list["games"].empty()) throw std::runtime_error{"Game list file does not contain the expected game list data"};
       *state.game_list = new_list;
+      for(auto const &game : new_list["games"]) {
+        state.selected_game_versions[game["name"].get<std::string>()] = game["preferred_version"].get<std::string>();
+      }
 
+      std::ofstream{state.game_list_file} << new_list.dump(2);
+      std::cout << "Game list updated with " << new_list["games"].size() << " games and saved in " << state.game_list_file << std::endl;
     },
     [this](std::exception_ptr const error) {
       if(error) {
