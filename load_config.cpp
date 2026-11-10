@@ -49,4 +49,9 @@ void load_config(launcher_state &state) {
   std::cout << "Launcher repository: " << state.config.get<std::string>("launcher_repo_url") << std::endl;
   std::cout << "Game list download: " << state.game_list_url << std::endl;
   std::cout << "Game list cache: " << state.game_list_file << std::endl;
+
+  if(!std::filesystem::exists(state.config.get<std::filesystem::path>("cache_dir"))) {
+    std::cout << "Creating cache dir " << state.config.get<std::filesystem::path>("cache_dir") << std::endl;
+    std::filesystem::create_directories(state.config.get<std::filesystem::path>("cache_dir"));
+  }
 }
