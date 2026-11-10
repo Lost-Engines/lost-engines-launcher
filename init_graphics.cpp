@@ -31,6 +31,8 @@ void init_graphics(std::string const &window_title) {
   imgui_io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;                   // enable Keyboard Controls
   imgui_io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;                    // enable Gamepad Controls
 
+  imgui_io.IniFilename = nullptr;                                               // disable automatic imgui.ini loading and saving
+
   ImGui::StyleColorsDark();
 
   ImGuiStyle &imgui_style{ImGui::GetStyle()};
