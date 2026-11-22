@@ -3,15 +3,17 @@
 #include "platform_defines.h"
 #if defined(PLATFORM_WINDOWS)
   #include <objbase.h>
-#elif defined(PLATFORM_LINUX)
+#elif defined(PLATFORM_LINUX) || defined(PLATFORM_MACOS)
   #include <unistd.h>
-#elif defined(PLATFORM_MACOS)
-  // nothing to include
+  #if defined(PLATFORM_MACOS)
+    #include <cerrno>
+    #include <sys/wait.h>
+  #endif
 #else
   #error "Compilation platform could not be determined.  Make sure platform_defines.h is included and up to date."
 #endif // defined
 
-void open_url(boost::urls::url const &url) {
+void open_url(std::string const &url) {
   /// Open the specified URL in the system default browser, regardless of platform
   std::cout << "Opening URL " << url << std::endl;
   #if defined(PLATFORM_WINDOWS)
@@ -27,11 +29,13 @@ void open_url(boost::urls::url const &url) {
       execl("/usr/bin/xdg-open", "xdg-open", url.c_str(), (char*)NULL);
     }
   #elif defined(PLATFORM_MACOS)
-    std::string command = "open " + url;
-    system(command.c_str());
+    pid_t pid = fork();
+    if(!pid) {
+      execl("/usr/bin/open", "open", url.c_str(), (char*)NULL);
+      _exit(1);
+    } else if(pid > 0) {
+      int status;
+      while(waitpid(pid, &status, 0) == -1 && errno == EINTR) {}
+    }
   #endif // defined
-}
-
-void open_url(std::string const &url) {
-  open_url(boost::urls::url{url});
 }
